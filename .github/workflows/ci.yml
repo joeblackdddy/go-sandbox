@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.24', '1.25']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: |
+            generator/go.sum
+            slice_practice/go.sum
+      
+      - name: Verify dependencies
+        run: |
+          cd generator && go mod verify
+          cd ../slice_practice && go mod verify
+      
+      - name: Run tests
+        run: |
+          cd generator && go test -v ./...
+          cd ../slice_practice && go test -v ./...
+      
+      - name: Run vet
+        run: |
+          cd generator && go vet ./...
+          cd ../slice_practice && go vet ./...
+      
+      - name: Check formatting
+        run: |
+          cd generator && test -z $(gofmt -l .) || (echo "Code is not formatted. Run 'gofmt -w .'" && exit 1)
+          cd ../slice_practice && test -z $(gofmt -l .) || (echo "Code is not formatted. Run 'gofmt -w .'" && exit 1)
+
+  build:
+    name: Build
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        go-version: ['1.24']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache-dependency-path: |
+            generator/go.sum
+            slice_practice/go.sum
+      
+      - name: Build generator
+        run: |
+          cd generator
+          go build -v -o generator ./...
+      
+      - name: Build slice_practice
+        run: |
+          cd slice_practice
+          go build -v -o slice_practice ./...
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.os }}
+          path: |
+            generator/generator
+            slice_practice/slice_practice
+          retention-days: 1
+
+  upload:
+    name: Upload to S3
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binaries-ubuntu-latest
+          merge-multiple: true
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Upload to S3
+        run: |
+          echo ${{ secrets.AWS_REGION }}
+          # aws s3 cp generator/generator s3://your-bucket/binaries/generator
+          # aws s3 cp slice_practice/slice_practice s3://your-bucket/binaries/slice_practice
+          echo "Uploaded to S3"
+
