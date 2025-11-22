@@ -98,16 +98,16 @@ jobs:
           pattern: binaries-ubuntu-latest
           merge-multiple: true
       
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: ${{ secrets.AWS_REGION }}
       
       - name: Upload to S3
         run: |
-          echo ${{ secrets.AWS_REGION }}
+          echo "AWS_REGION: ${{ secrets.AWS_REGION }}"
           # aws s3 cp generator/generator s3://your-bucket/binaries/generator
           # aws s3 cp slice_practice/slice_practice s3://your-bucket/binaries/slice_practice
           echo "Uploaded to S3"
